@@ -1,0 +1,31 @@
+{
+  "name": "wordsgurubot",
+  "version": "0.0.1",
+  "description": "",
+  "main": "dist/app.js",
+  "dependencies": {
+    "telegraf": "^3.17.7"
+  },
+  "devDependencies": {
+    "babel-core": "^6.26.0",
+    "babel-eslint": "^8.2.1",
+    "babel-loader": "^7.1.2",
+    "babel-preset-env": "^1.6.1",
+    "babel-preset-stage-2": "^6.24.1",
+    "eslint": "^4.17.0",
+    "eslint-config-airbnb-base": "^12.1.0",
+    "eslint-loader": "^1.9.0",
+    "eslint-plugin-import": "^2.8.0",
+    "webpack": "^3.10.0",
+    "webpack-merge": "^4.1.1",
+    "webpack-node-externals": "^1.6.0"
+  },
+  "scripts": {
+    "build": "webpack",
+    "start": "webpack --env development --watch",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Petr Ermishkin <quasiyoke@gmail.com>",
+  "license": "AGPL-3.0",
+  "private": true
+}
