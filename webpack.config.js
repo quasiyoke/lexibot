@@ -17,7 +17,10 @@ const COMMON_CONFIG = merge([
   }),
   {
     entry: {
-      app: PATHS.app,
+      app: [
+        'babel-polyfill',
+        PATHS.app,
+      ],
     },
     output: {
       path: PATHS.dist,

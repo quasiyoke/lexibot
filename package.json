@@ -4,12 +4,15 @@
   "description": "",
   "main": "dist/app.js",
   "dependencies": {
+    "mongodb": "^3.0.2",
+    "ramda": "^0.25.0",
     "telegraf": "^3.17.7"
   },
   "devDependencies": {
     "babel-core": "^6.26.0",
     "babel-eslint": "^8.2.1",
     "babel-loader": "^7.1.2",
+    "babel-polyfill": "^6.26.0",
     "babel-preset-env": "^1.6.1",
     "babel-preset-stage-2": "^6.24.1",
     "eslint": "^4.17.0",
