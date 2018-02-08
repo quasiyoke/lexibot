@@ -6,7 +6,8 @@
   "dependencies": {
     "mongodb": "^3.0.2",
     "ramda": "^0.25.0",
-    "telegraf": "^3.17.7"
+    "telegraf": "^3.17.7",
+    "winston": "^2.4.0"
   },
   "devDependencies": {
     "babel-core": "^6.26.0",

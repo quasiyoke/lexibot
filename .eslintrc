@@ -5,6 +5,7 @@
     "function-paren-newline": ["error", "consistent"],
     "no-unused-vars": ["error", {
       "varsIgnorePattern": "unused"
-    }]
+    }],
+    "import/prefer-default-export": 0
   }
 }

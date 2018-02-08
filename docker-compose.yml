@@ -12,8 +12,8 @@ services:
     volumes:
       - ./db/:/data/db/
 secrets:
-  db_url: 'mongodb://db'
-  db_name: wordsgurubot
+  bot_token:
+    file: ./conf/bot_token
   db_user:
     file: ./conf/db_user
   db_password:
