@@ -8,5 +8,8 @@
       "varsIgnorePattern": "unused"
     }],
     "prefer-promise-reject-errors": "off"
+  },
+  "settings": {
+    "import/resolver": "webpack"
   }
 }

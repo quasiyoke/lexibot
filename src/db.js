@@ -13,16 +13,16 @@ import {
   T,
 } from 'ramda';
 
-import getSecret from './conf';
+import getSecret from 'conf';
 import {
   getUnitId,
-} from './entities/unit';
+} from 'entities/unit';
 import {
   getUserId,
-} from './entities/user';
+} from 'entities/user';
 import {
   logger,
-} from './helpers';
+} from 'helpers';
 
 /**
  * @throws In case of connection troubles.

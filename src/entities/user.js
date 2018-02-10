@@ -7,7 +7,7 @@ import {
 
 import {
   compact,
-} from '../helpers';
+} from 'helpers';
 
 export const getFullName = (user) => {
   const firstName = path(['telegramInfo', 'first_name'], user);

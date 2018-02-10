@@ -26,6 +26,12 @@ const COMMON_CONFIG = merge([
       path: PATHS.dist,
       filename: '[name].js',
     },
+    resolve: {
+      modules: [
+        PATHS.app,
+        'node_modules',
+      ],
+    },
     target: 'node',
     externals: nodeExternals(),
   },

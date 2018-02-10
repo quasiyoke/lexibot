@@ -7,7 +7,7 @@ import {
 
 import {
   logger,
-} from './helpers';
+} from 'helpers';
 
 const getSecretFromObject = curry((conf, name) => {
   if (!has(name, conf)) {

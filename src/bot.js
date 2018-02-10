@@ -11,28 +11,28 @@ import {
 } from 'ramda';
 import Telegraf from 'telegraf';
 
-import getSecret from './conf';
+import getSecret from 'conf';
 import {
   getUnitByName,
   getUserByTelegramInfo,
   insertUnit,
   insertUpdate,
   updateUnit,
-} from './db';
+} from 'db';
 import {
   getUnitName,
   getUnitRepr,
-} from './entities/unit';
+} from 'entities/unit';
 import {
   getFullName,
   getUserId,
-} from './entities/user';
+} from 'entities/user';
 import {
   ARTICLES_DELIMITER,
   logger,
   parseUnit,
   TRANSLATION_DELIMITER,
-} from './helpers';
+} from 'helpers';
 
 const getEditedMessageText = path(['editedMessage', 'text']);
 
