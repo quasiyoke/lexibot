@@ -4,6 +4,8 @@ import {
   curry,
   flip,
   is,
+  join,
+  map,
   not,
   path,
   prop,
@@ -14,12 +16,15 @@ import Telegraf from 'telegraf';
 import getSecret from 'conf';
 import {
   getUnitByName,
+  getUnitsByUserId,
   getUserByTelegramInfo,
   insertUnit,
   insertUpdate,
   updateUnit,
 } from 'db';
 import {
+  getUnitCommand,
+  getUnitGlimpse,
   getUnitName,
   getUnitRepr,
 } from 'entities/unit';
@@ -33,6 +38,19 @@ import {
   parseUnit,
   TRANSLATION_DELIMITER,
 } from 'helpers';
+
+const CREATE_UNIT_HELP = 'To create a new vocabulary unit just send me a message starting with' +
+  ' a hashtag “unit\\_name”, e.g.: `#unidad1`' +
+  ' After that I want to see a list of words in the same message.' +
+  ` Use equal sign \`${TRANSLATION_DELIMITER}\` to separate foreign word from its translation.` +
+  ` Use semicolon \`${ARTICLES_DELIMITER}\` to separate words list's items from each other.` +
+  '\nHere is an example unit containing three pairs of words:' +
+  '\n```' +
+  '\n#unidad1' +
+  '\nel hijo = son;' +
+  '\nmasculino = masculine, male;' +
+  '\nel nombre = name' +
+  '```';
 
 const getEditedMessageText = path(['editedMessage', 'text']);
 
@@ -58,27 +76,46 @@ const auth = curry(async (db, ctx, next) => {
 
 const getUser = path(['state', 'user']);
 
+const onHelp = ctx => ctx.reply(
+  'Here\'s the list of available commands:' +
+  '\n/units — show the list of available units.' +
+  `\n${CREATE_UNIT_HELP}`,
+  { parse_mode: 'Markdown' },
+);
+
 const onStart = async (ctx) => {
   const user = getUser(ctx);
   logger.info('User %s has run "start" command', getUserId(user));
-  ctx.reply(
-    `Welcome, ${getFullName(user)}. I'm intended to help you in studying foreign language's lexics.` +
+  return ctx.reply(
+    `Welcome, ${getFullName(user)} 🤗` +
+    ' I\'m intended to help you in studying foreign language\'s lexics.' +
     ' We\'ll study it gradually: unit by unit in your textbook.' +
-    '\nTo create a new vocabulary unit just send me a message starting with a hashtag “unit\\_name”,' +
-    ' e.g.: `#unidad1`' +
-    ' After that I want to see a list of words in the same message.' +
-    ` Use equal sign \`${TRANSLATION_DELIMITER}\` to separate foreign word from its translation.` +
-    ` Use semicolon \`${ARTICLES_DELIMITER}\` to separate words list's items from each other.` +
-    '\nHere is an example unit containing three pairs of words:' +
-    '\n```' +
-    '\n#unidad1' +
-    '\nel hijo = son;' +
-    '\nmasculino = masculine, male;' +
-    '\nel nombre = name' +
-    '```',
+    `\n${CREATE_UNIT_HELP}`,
     { parse_mode: 'Markdown' },
   );
 };
+
+const onUnits = curry(async (db, ctx) => {
+  const user = getUser(ctx);
+  const userId = getUserId(user);
+  logger.info('User %s has run "units" command', userId);
+  const units = await getUnitsByUserId(db, userId);
+
+  if (units.length === 0) {
+    return ctx.reply(`Sorry, but you have no units 😔 ${CREATE_UNIT_HELP}`, {
+      parse_mode: 'Markdown',
+    });
+  }
+
+  const getListItem = unit => `${getUnitCommand(unit)}: ${getUnitGlimpse(unit)}`;
+  const unitsRepr = compose(
+    join('\n'),
+    map(getListItem),
+  )(units);
+  return ctx.reply(`Here's the list of available units:\n${unitsRepr}`, {
+    parse_mode: 'Markdown',
+  });
+});
 
 /**
  * Processes messages starting with hashtag.
@@ -150,6 +187,8 @@ const run = (db) => {
     .use(auth(db))
     .use(processHashtag(db))
     .start(onStart)
+    .command('units', onUnits(db))
+    .use(onHelp)
     .startPolling();
   logger.info('Ready for messages');
 };

@@ -2,7 +2,6 @@ import {
   MongoClient,
 } from 'mongodb';
 import {
-  always,
   compose,
   cond,
   curry,
@@ -47,9 +46,21 @@ export const getUnitByName = (db, name, userId) => db.collection('unit')
     userId,
   })
   .then(cond([
-    [isNil, always(Promise.reject())],
+    [
+      isNil,
+      () => Promise.reject(Error('Unit not found')),
+    ],
     [T, identity],
   ]));
+
+export const getUnitsByUserId = (db, userId) => db.collection('unit')
+  .find({
+    userId,
+  })
+  .sort({
+    modified: -1,
+  })
+  .toArray();
 
 export const getUserByTelegramInfo = curry(async (db, telegramInfo) => {
   const telegramId = prop('id', telegramInfo);
