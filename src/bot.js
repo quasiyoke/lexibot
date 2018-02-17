@@ -25,6 +25,7 @@ import {
 import {
   getUnitCommand,
   getUnitGlimpse,
+  getUnitId,
   getUnitName,
   getUnitRepr,
 } from 'entities/unit';
@@ -36,6 +37,7 @@ import {
   ARTICLES_DELIMITER,
   logger,
   parseUnit,
+  parseUnitCommand,
   TRANSLATION_DELIMITER,
 } from 'helpers';
 
@@ -75,6 +77,10 @@ const auth = curry(async (db, ctx, next) => {
 });
 
 const getUser = path(['state', 'user']);
+
+const onError = err => {
+  logger.error(err);
+};
 
 const onHelp = ctx => ctx.reply(
   'Here\'s the list of available commands:' +
@@ -151,21 +157,65 @@ const processHashtag = curry(async (db, ctx, next) => {
         .then(
           async (oldUnit) => {
             await updateUnit(db, oldUnit, unit);
+            logger.info('User %s has updated unit %s', userId, getUnitId(oldUnit));
             return ctx.reply(`Unit #${getUnitName(unit)} was updated.\n${getUnitRepr(unit)}`);
           },
           async () => {
             const newUnit = await insertUnit(db, unit, userId);
+            logger.info('User %s has added unit %s', userId, getUnitId(newUnit));
             return ctx.reply(`Unit #${getUnitName(newUnit)} was added successfully.\n${getUnitRepr(newUnit)}`);
           },
         ),
-      (err) => {
-        if (is(Error, err)) {
-          logger.error('A trouble during unit parsing. %s', err);
-          return Promise.reject(err);
+      (reason) => {
+        if (is(Error, reason)) {
+          logger.error('A trouble during unit parsing. %s', reason);
+          return Promise.reject(reason);
         }
 
-        logger.info('User\'s %s unit wasn\'t parsed: "%s" Unit: %s', userId, err, text);
-        return ctx.reply(`${err} You're able to edit the message to fix that.`);
+        logger.info('User\'s %s unit wasn\'t parsed: "%s" Unit: %s', userId, reason, text);
+        return ctx.reply(`${reason} You're able to edit the message to fix that.`);
+      },
+    );
+});
+
+const processUnitCommand = curry(async (db, ctx, next) => {
+  const text = getMessageText(ctx);
+
+  if (compose(
+    not,
+    test(/^\s*\/unit/i),
+  )(text)) {
+    return next();
+  }
+
+  const user = getUser(ctx);
+  const userId = getUserId(user);
+  return parseUnitCommand(text)
+    .then(
+      name => getUnitByName(db, name, userId)
+        .then(
+          (unit) => {
+            logger.warn('User %s have asked to show unit %s', userId, getUnitId(unit));
+            return ctx.reply('OK, so we\'ve found your unit');
+          },
+          () => {
+            logger.warn('User\'s %s unit %s wasn\'t found', userId, name);
+            return ctx.reply(`Sorry, unit “${name}” not found 😞`);
+          },
+        ),
+      (reason) => {
+        if (is(Error, reason)) {
+          logger.error('A trouble during unit command parsing. %s', reason);
+          return Promise.reject(reason);
+        }
+
+        logger.info(
+          'User\'s %s unit command wasn\'t parsed: "%s" Unit command: %s',
+          userId,
+          reason,
+          text,
+        );
+        return ctx.reply(reason);
       },
     );
 });
@@ -188,7 +238,9 @@ const run = (db) => {
     .use(processHashtag(db))
     .start(onStart)
     .command('units', onUnits(db))
+    .on('message', processUnitCommand(db))
     .use(onHelp)
+    .catch(onError)
     .startPolling();
   logger.info('Ready for messages');
 };
