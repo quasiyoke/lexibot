@@ -1,19 +1,33 @@
 import {
   compose,
+  concat,
   join,
   map,
   prop,
   take,
 } from 'ramda';
 
+import {
+  escapeMarkdown,
+} from 'helpers';
+
 const getArticleTranslation = prop('translation');
 
 const getArticleWord = prop('word');
 
+/**
+ * Represents an article in Markdown.
+ */
 const getArticleRepr = (article) => {
-  const word = getArticleWord(article);
-  const translation = getArticleTranslation(article);
-  return `${word} = ${translation}`;
+  const word = compose(
+    escapeMarkdown,
+    getArticleWord,
+  )(article);
+  const translation = compose(
+    escapeMarkdown,
+    getArticleTranslation,
+  )(article);
+  return `*${word}* ${translation}`;
 };
 
 const getUnitArticles = prop('articles');
@@ -21,20 +35,26 @@ const getUnitArticles = prop('articles');
 export const getUnitName = prop('name');
 
 export const getUnitCommand = compose(
-  name => `/unit\\_${name}`,
+  escapeMarkdown,
+  concat('/unit_'),
   getUnitName,
 );
 
-export const getUnitGlimpse = (unit) => {
-  const UNIT_GLIMPSE_WORDS_COUNT_MAX = 3;
-  const articles = getUnitArticles(unit);
-  let glimpse = compose(
-    join(', '),
-    map(getArticleWord),
-    take(UNIT_GLIMPSE_WORDS_COUNT_MAX),
-  )(articles);
+export const getUnitWords = compose(
+  map(getArticleWord),
+  getUnitArticles,
+);
 
-  if (articles.length > UNIT_GLIMPSE_WORDS_COUNT_MAX) {
+export const getUnitGlimpse = (unit) => {
+  const WORDS_COUNT_MAX = 3;
+  let glimpse = compose(
+    escapeMarkdown,
+    join(', '),
+    take(WORDS_COUNT_MAX),
+    getUnitWords,
+  )(unit);
+
+  if (getUnitArticles(unit).length > WORDS_COUNT_MAX) {
     glimpse += '...';
   }
 

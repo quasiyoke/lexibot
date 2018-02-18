@@ -3,16 +3,16 @@ import {
 } from 'mongodb';
 import {
   compose,
-  cond,
   curry,
   head,
-  identity,
-  isNil,
+  omit,
   prop,
-  T,
 } from 'ramda';
 
 import getSecret from 'conf';
+import {
+  getRehearsalId,
+} from 'entities/rehearsal';
 import {
   getUnitId,
 } from 'entities/unit';
@@ -21,6 +21,7 @@ import {
 } from 'entities/user';
 import {
   logger,
+  rejectNil,
 } from 'helpers';
 
 /**
@@ -40,18 +41,28 @@ export const connect = async () => {
   return db;
 };
 
+const getModelFromInsertResult = compose(
+  head,
+  prop('ops'),
+);
+
+/**
+ * Obtains active rehearsal for given user ID.
+ * @returns - Rejected promise if there's no such rehearsal.
+ */
+export const getRehearsalByUserId = (db, userId) => db.collection('rehearsal')
+  .findOne({
+    status: 'active',
+    userId,
+  })
+  .then(rejectNil('No rehearsal was found'));
+
 export const getUnitByName = (db, name, userId) => db.collection('unit')
   .findOne({
     name,
     userId,
   })
-  .then(cond([
-    [
-      isNil,
-      () => Promise.reject(Error('Unit not found')),
-    ],
-    [T, identity],
-  ]));
+  .then(rejectNil('Unit wasn\'t found'));
 
 export const getUnitsByUserId = (db, userId) => db.collection('unit')
   .find({
@@ -73,14 +84,11 @@ export const getUserByTelegramInfo = curry(async (db, telegramInfo) => {
     return user;
   }
 
-  const insertResult = await db.collection('user')
+  user = await db.collection('user')
     .insertOne({
       telegramInfo,
-    });
-  user = compose(
-    head,
-    prop('ops'),
-  )(insertResult);
+    })
+    .then(getModelFromInsertResult);
   logger.info(
     'A new user with Telegram ID %d and ID %s was inserted',
     telegramId,
@@ -88,6 +96,21 @@ export const getUserByTelegramInfo = curry(async (db, telegramInfo) => {
   );
   return user;
 });
+
+export const insertRehearsal = async (db, unit, userId) => {
+  const created = new Date();
+  const rehearsal = await db.collection('rehearsal')
+    .insertOne({
+      created,
+      modified: created,
+      status: 'active',
+      unit,
+      userId,
+    })
+    .then(getModelFromInsertResult);
+  logger.info('A new rehearsal %s for user %s was inserted', getRehearsalId(rehearsal), userId);
+  return rehearsal;
+};
 
 export const insertUnit = (db, unit, userId) => {
   const created = new Date();
@@ -98,10 +121,7 @@ export const insertUnit = (db, unit, userId) => {
       userId,
       ...unit,
     })
-    .then(compose(
-      head,
-      prop('ops'),
-    ))
+    .then(getModelFromInsertResult)
     .then((newUnit) => {
       logger.info('A new unit %s for user %s was inserted', getUnitId(newUnit), userId);
       return newUnit;
@@ -117,6 +137,16 @@ export const insertUpdate = curry((db, update) => {
       ...update,
     });
 });
+
+export const updateRehearsal = (db, rehearsal) => db.collection('rehearsal')
+  .updateOne({
+    _id: getRehearsalId(rehearsal),
+  }, {
+    $currentDate: {
+      modified: true,
+    },
+    $set: omit(['modified'], rehearsal),
+  });
 
 export const updateUnit = (db, old, fresh) => db.collection('unit')
   .updateOne({

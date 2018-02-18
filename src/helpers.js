@@ -1,15 +1,19 @@
 import winston from 'winston';
 import {
   compose,
+  cond,
   equals,
   filter,
   find,
+  identity,
+  isNil,
   join,
   length,
   map,
   not,
   replace,
   split,
+  T,
   trim,
 } from 'ramda';
 
@@ -19,7 +23,16 @@ export const TRANSLATION_DELIMITER = '=';
 const UNIT_RE = /^\s*#([^#\s/]+)([^]*)$/;
 const UNIT_COMMAND_RE = /^\s*\/unit_([^#\s/]+)\s*$/;
 
+export const choose = arr => arr[
+  Math.floor(Math.random() * arr.length)
+];
+
 export const compact = filter(Boolean);
+
+export const escapeMarkdown = compose(
+  replace(/\*/g, '\\*'),
+  replace(/_/g, '\\_'),
+);
 
 export const logger = new winston.Logger({
   transports: [
@@ -31,6 +44,8 @@ export const logger = new winston.Logger({
     }),
   ],
 });
+
+export const noop = () => {};
 
 const normalizeSpaces = compose(
   replace(/\s+/g, ' '),
@@ -112,7 +127,7 @@ export const parseUnit = (text) => {
  * @example
  * parseUnitCommand('/unit  dad_1'); //=> Promise.reject('Can\'t recognize unit name.')
  *
- * @returns - Promise. Resolved with the unit name in the case of success. Rejected with
+ * @returns - Promise. Resolved with the unit name in the case of success; otherwise rejected with
  *  the reason of the trouble during the parsing.
  */
 export const parseUnitCommand = (text) => {
@@ -125,3 +140,14 @@ export const parseUnitCommand = (text) => {
   const [unusedText, unitName] = match;
   return Promise.resolve(unitName);
 };
+
+/**
+ * @returns - Rejected promise if an argument is nil-value; otherwise returns the argument.
+ */
+export const rejectNil = reason => cond([
+  [
+    isNil,
+    () => Promise.reject(Error(reason)),
+  ],
+  [T, identity],
+]);
