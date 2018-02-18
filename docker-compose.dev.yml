@@ -1,16 +1,5 @@
 version: '3.3'
 services:
-  bot:
-    build: .
-    image: quasiyoke/wordsgurubot
-    secrets:
-      - bot_token
-      - db_name
-      - db_password
-      - db_url
-      - db_user
-    depends_on:
-      - db
   db:
     image: mongo:3.6
     environment:
@@ -23,12 +12,6 @@ services:
     volumes:
       - ./db/:/data/db/
 secrets:
-  bot_token:
-    file: ./conf/bot_token
-  db_name:
-    file: ./conf/db_name
-  db_url:
-    file: ./conf/db_url
   db_user:
     file: ./conf/db_user
   db_password:
