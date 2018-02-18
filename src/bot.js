@@ -26,11 +26,13 @@ import {
   updateUnit,
 } from 'db';
 import {
+  getRehearsalArticleRepr,
   getRehearsalRepr,
   getRehearsalUnit,
   getRehearsalWithNextWord,
   getRehearsalWord,
   getStoppedRehearsal,
+  updateRehearsalWithTelegramMessageId,
 } from 'entities/rehearsal';
 import {
   getUnitCommand,
@@ -76,6 +78,8 @@ const getTelegramInfo = prop('from');
 
 const getUpdate = prop('update');
 
+const getUpdateMessageId = prop('message_id');
+
 const getUpdateType = prop('updateType');
 
 const getUser = path(['state', 'user']);
@@ -85,7 +89,15 @@ const setRehearsal = curry((ctx, rehearsal) => {
 });
 
 const askNextRehearsalWord = async (db, ctx) => {
-  const rehearsal = getRehearsal(ctx);
+  /**
+   * When we've asked user, we're able to save message ID to the DB to change it later.
+   */
+  const onReplyWasSent = (update) => {
+    const telegramMessageId = getUpdateMessageId(update);
+    const rehearsal = getRehearsal(ctx);
+    updateRehearsalWithTelegramMessageId(telegramMessageId, rehearsal);
+    return updateRehearsal(db, rehearsal);
+  };
 
   const onNextWord = async (newRehearsal) => {
     await updateRehearsal(db, newRehearsal);
@@ -97,9 +109,34 @@ const askNextRehearsalWord = async (db, ctx) => {
     return ctx.reply(
       'Do you know the translation for' +
       `\n*${word}?*`,
-      { parse_mode: 'Markdown' },
-    );
+      {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: 'Show the translation',
+                callback_data: 'show_translation',
+              },
+            ],
+            [
+              {
+                text: 'Yes',
+                callback_data: 'yes',
+              },
+              {
+                text: 'No',
+                callback_data: 'no',
+              },
+            ],
+          ],
+        },
+      },
+    )
+      .then(onReplyWasSent);
   };
+
+  const rehearsal = getRehearsal(ctx);
 
   /**
    * In case when the rehearsal was finished: there're no more words to study.
@@ -156,6 +193,35 @@ const onHelp = ctx => ctx.reply(
   `\n${CREATE_UNIT_HELP}`,
   { parse_mode: 'Markdown' },
 );
+
+/**
+ * User has pressed "Show the translation" callback query button.
+ */
+const onShowTranslation = curry(async (db, ctx) => {
+  const rehearsal = getRehearsal(ctx);
+  const articleRepr = getRehearsalArticleRepr(rehearsal);
+  return ctx.editMessageText(
+    'Did you know the translation for' +
+    `\n${articleRepr}?`,
+    {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: 'Yes',
+              callback_data: 'yes',
+            },
+            {
+              text: 'No',
+              callback_data: 'no',
+            },
+          ],
+        ],
+      },
+    },
+  );
+});
 
 /**
  * Standard Telegram `/start` command.
@@ -296,6 +362,10 @@ const processUnitCommand = curry(async (db, ctx, next) => {
     return askNextRehearsalWord(db, ctx);
   };
 
+  /**
+   * If unit with the name specified by user wasn't found.
+   * @param unusedReason - Just to make function partially applied with one argument.
+   */
   const onUnitWasntFound = curry((name, unusedReason) => {
     logger.warn('User\'s %s unit %s wasn\'t found', userId, name);
     return ctx.reply(`Sorry, unit “${name}” not found 😞`);
@@ -351,6 +421,7 @@ const run = (db) => {
     .start(onStart)
     .command('units', onUnits(db))
     .on('message', processUnitCommand(db))
+    .action('show_translation', onShowTranslation(db))
     // If any upper handlers haven't processed the update, let's show help message.
     .use(onHelp)
     .catch(onError)

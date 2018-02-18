@@ -1,10 +1,13 @@
 import {
   compose,
   concat,
+  curry,
+  find,
   join,
   map,
   prop,
   take,
+  whereEq,
 } from 'ramda';
 
 import {
@@ -31,6 +34,14 @@ const getArticleRepr = (article) => {
 };
 
 const getUnitArticles = prop('articles');
+
+export const getUnitArticleReprByWord = curry((word, unit) => compose(
+  getArticleRepr,
+  find(whereEq({
+    word,
+  })),
+  getUnitArticles,
+)(unit));
 
 export const getUnitName = prop('name');
 
