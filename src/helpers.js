@@ -29,6 +29,8 @@ export const choose = arr => arr[
 
 export const compact = filter(Boolean);
 
+export const delay = microseconds => new Promise(resolve => setTimeout(resolve, microseconds));
+
 export const escapeMarkdown = compose(
   replace(/\*/g, '\\*'),
   replace(/_/g, '\\_'),

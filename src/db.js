@@ -20,6 +20,7 @@ import {
   getUserId,
 } from 'entities/user';
 import {
+  delay,
   logger,
   rejectNil,
 } from 'helpers';
@@ -28,6 +29,7 @@ import {
  * @throws In case of connection troubles.
  */
 export const connect = async () => {
+  const ATTEMPTS_COUNT_MAX = 20;
   const url = getSecret('db_url');
   const options = {
     auth: {
@@ -35,7 +37,25 @@ export const connect = async () => {
       password: getSecret('db_password'),
     },
   };
-  const client = await MongoClient.connect(url, options);
+  let client;
+
+  for (let i = 0; ; i += 1) {
+    try {
+      client = await MongoClient.connect(url, options);
+    } catch (err) {
+      logger.debug('Attempt #%d to connect was failed. %s', i, err);
+
+      if (i < ATTEMPTS_COUNT_MAX) {
+        await delay(200);
+        continue;
+      }
+
+      throw err;
+    }
+
+    break;
+  }
+
   const dbName = getSecret('db_name');
   const db = client.db(dbName);
   return db;

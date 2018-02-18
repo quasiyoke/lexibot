@@ -25,7 +25,8 @@ const readSecret = (name) => {
   const secretPath = path.join('/run', 'secrets', name);
 
   try {
-    return fs.readFileSync(secretPath, 'utf8');
+    return fs.readFileSync(secretPath, 'utf8')
+      .trim();
   } catch (err) {
     throw Error(`Can't read secret "${name}" from file "${secretPath}". ${err}`);
   }

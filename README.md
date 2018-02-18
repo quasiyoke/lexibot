@@ -21,7 +21,7 @@ vi conf/db_name
 ```
 
 ```
-root
+admin
 ```
 
 Docker Compose will provide us beautiful MongoDB URL:
@@ -31,7 +31,7 @@ vi conf/db_url
 ```
 
 ```
-mongodb://db
+mongodb://db:27017
 ```
 
 ```sh
