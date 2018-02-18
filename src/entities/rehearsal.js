@@ -1,11 +1,18 @@
 import {
   __,
+  always,
   compose,
+  cond,
+  curry,
   difference,
+  equals,
+  filter,
   last,
+  length,
   map,
   merge,
   prop,
+  T,
 } from 'ramda';
 
 import {
@@ -15,6 +22,8 @@ import {
   getUnitArticleReprByWord,
   getUnitWords,
 } from 'entities/unit';
+
+const getHistoryItemIsKnown = prop('isKnown');
 
 const getHistoryItemWord = prop('word');
 
@@ -49,8 +58,44 @@ export const getRehearsalArticleRepr = (rehearsal) => {
 export const getRehearsalId = prop('_id');
 
 export const getRehearsalRepr = (rehearsal) => {
-  const { status } = rehearsal;
-  return `Status: ${status}`;
+  const history = getRehearsalHistory(rehearsal);
+  const knownHistoryItemsCount = compose(
+    length,
+    filter(getHistoryItemIsKnown),
+  )(history);
+  let knownRatio = knownHistoryItemsCount / length(history);
+
+  if (!Number.isFinite(knownRatio)) {
+    knownRatio = 0;
+  }
+
+  const perCentRatio = Math.round(knownRatio * 100);
+  const isGreater = curry((b, a) => a > b);
+  return cond([
+    [
+      equals(1),
+      always('Wonderful! You haven\'t made a single mistake 🤠 Let\'s go to the next unit?'),
+    ],
+    [isGreater(0.9), always(`Great! You know ${perCentRatio}% of words in this unit 😏 Congratulations!`)],
+    [
+      isGreater(0.75),
+      always(`You know ${perCentRatio}% of words here. Not bad 👌`),
+    ],
+    [
+      isGreater(0),
+      always(
+        `You know only ${perCentRatio}% of words here.` +
+        ' Maybe, study this unit one more time?',
+      ),
+    ],
+    [
+      T,
+      always(
+        'It seems like you don\'t know a single word from this unit 😶' +
+        ' Perhaps, you should try something more simple?',
+      ),
+    ],
+  ])(knownRatio);
 };
 
 /**
