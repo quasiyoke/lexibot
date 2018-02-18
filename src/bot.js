@@ -32,6 +32,7 @@ import {
   getRehearsalWithNextWord,
   getRehearsalWord,
   getStoppedRehearsal,
+  updateRehearsalWithIsArticleKnown,
   updateRehearsalWithTelegramMessageId,
 } from 'entities/rehearsal';
 import {
@@ -116,17 +117,17 @@ const askNextRehearsalWord = async (db, ctx) => {
             [
               {
                 text: 'Show the translation',
-                callback_data: 'show_translation',
+                callback_data: 'showTranslation',
               },
             ],
             [
               {
                 text: 'Yes',
-                callback_data: 'yes',
+                callback_data: 'knowTranslation',
               },
               {
                 text: 'No',
-                callback_data: 'no',
+                callback_data: 'dontKnowTranslation',
               },
             ],
           ],
@@ -195,6 +196,25 @@ const onHelp = ctx => ctx.reply(
 );
 
 /**
+ * User has pressed callback query button: she knows (doesn't know) the translation.
+ */
+const onKnowTranslation = curry(async (db, isKnown, ctx) => {
+  const rehearsal = getRehearsal(ctx);
+  updateRehearsalWithIsArticleKnown(isKnown, rehearsal);
+  await updateRehearsal(db, rehearsal);
+  const articleRepr = getRehearsalArticleRepr(rehearsal);
+  const isKnownRepr = isKnown ? 'You did' : 'You didn\'t';
+  return Promise.all([
+    ctx.editMessageText(
+      `${isKnownRepr} know the translation for` +
+      `\n${articleRepr}`,
+      { parse_mode: 'Markdown' },
+    ),
+    askNextRehearsalWord(db, ctx),
+  ]);
+});
+
+/**
  * User has pressed "Show the translation" callback query button.
  */
 const onShowTranslation = curry(async (db, ctx) => {
@@ -210,11 +230,11 @@ const onShowTranslation = curry(async (db, ctx) => {
           [
             {
               text: 'Yes',
-              callback_data: 'yes',
+              callback_data: 'knowTranslation',
             },
             {
               text: 'No',
-              callback_data: 'no',
+              callback_data: 'dontKnowTranslation',
             },
           ],
         ],
@@ -421,7 +441,9 @@ const run = (db) => {
     .start(onStart)
     .command('units', onUnits(db))
     .on('message', processUnitCommand(db))
-    .action('show_translation', onShowTranslation(db))
+    .action('showTranslation', onShowTranslation(db))
+    .action('knowTranslation', onKnowTranslation(db, true))
+    .action('dontKnowTranslation', onKnowTranslation(db, false))
     // If any upper handlers haven't processed the update, let's show help message.
     .use(onHelp)
     .catch(onError)

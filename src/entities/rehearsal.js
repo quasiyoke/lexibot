@@ -3,6 +3,7 @@ import {
   compose,
   difference,
   last,
+  map,
   merge,
   prop,
 } from 'ramda';
@@ -15,6 +16,8 @@ import {
   getUnitWords,
 } from 'entities/unit';
 
+const getHistoryItemWord = prop('word');
+
 /**
  * Obtains the list of words which were studied during the rehearsal.
  */
@@ -26,7 +29,7 @@ const getLastRehearsalHistoryItem = compose(
 );
 
 export const getRehearsalWord = compose(
-  prop('word'),
+  getHistoryItemWord,
   getLastRehearsalHistoryItem,
 );
 
@@ -55,8 +58,9 @@ export const getRehearsalRepr = (rehearsal) => {
  */
 export const getRehearsalWithNextWord = (rehearsal) => {
   const history = getRehearsalHistory(rehearsal) || [];
+  const historyWords = map(getHistoryItemWord, history);
   const candidates = compose(
-    difference(__, history),
+    difference(__, historyWords),
     getUnitWords,
     getRehearsalUnit,
   )(rehearsal);
@@ -79,6 +83,11 @@ export const getRehearsalWithNextWord = (rehearsal) => {
 export const getStoppedRehearsal = merge(__, {
   status: 'stopped',
 });
+
+export const updateRehearsalWithIsArticleKnown = (isKnown, rehearsal) => {
+  const historyItem = getLastRehearsalHistoryItem(rehearsal);
+  historyItem.isKnown = isKnown;
+};
 
 export const updateRehearsalWithTelegramMessageId = (id, rehearsal) => {
   const historyItem = getLastRehearsalHistoryItem(rehearsal);
